@@ -1,3 +1,4 @@
+from copy import deepcopy
 import os.path
 import logging
 import torch
@@ -10,6 +11,8 @@ from fvcore.nn import FlopCountAnalysis
 from utils.model_summary import get_model_activation, get_model_flops
 from utils import utils_logger
 from utils import utils_image as util
+
+from torch.nn import functional as F
 
 
 def select_model(args, device):
@@ -38,7 +41,19 @@ def select_model(args, device):
                     mlp_ratio=2,
                     upsampler='pixelshuffle',
                     resi_connection='1conv')
-        model.load_state_dict(torch.load(model_path), strict=True)
+        param_key='params'
+        load_net = torch.load(model_path, map_location=lambda storage, loc: storage)
+        if param_key is not None:
+            if param_key not in load_net and 'params' in load_net:
+                param_key = 'params'
+            load_net = load_net[param_key]
+        # remove unnecessary 'module.'
+        for k, v in deepcopy(load_net).items():
+            if k.startswith('module.'):
+                load_net[k[7:]] = v
+                load_net.pop(k)
+        model.load_state_dict(load_net, strict=True)
+        # model.load_state_dict(torch.load(model_path), strict=True)
     else:
         raise NotImplementedError(f"Model {model_id} is not implemented.")
 
@@ -103,7 +118,31 @@ def forward(img_lq, model, tile=None, tile_overlap=32, scale=4):
         output = E.div_(W)
 
     return output
-
+class DataProcess:
+    def __init__(self):
+        self.window_size = 16
+        self.mod_pad_h = 0
+        self.mod_pad_w = 0
+        self.scale = 4
+        self.lq = None
+        self.output = None
+    def pre_process(self,img_lq):
+        # pad to multiplication of window_size
+        self.lq = img_lq
+        _, _, h, w = self.lq.size()
+        mod_pad_h, mod_pad_w = 0, 0
+        _, _, h, w = img_lq.size()
+        if h % self.window_size != 0:
+            self.mod_pad_h = self.window_size - h % self.window_size
+        if w % self.window_size != 0:
+            self.mod_pad_w = self.window_size - w % self.window_size
+        self.img = F.pad(self.lq, (0, self.mod_pad_w, 0, self.mod_pad_h), 'reflect')
+        return self.img
+    def post_process(self,img_sr):
+        self.output = img_sr
+        _, _, h, w = self.output.size()
+        self.output = self.output[:, :, 0:h - self.mod_pad_h * self.scale, 0:w - self.mod_pad_w * self.scale]
+        return self.output
 
 def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
 
@@ -126,8 +165,9 @@ def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
 
     start = torch.cuda.Event(enable_timing=True)
     end = torch.cuda.Event(enable_timing=True)
-
+    
     for i, (img_lr, img_hr) in enumerate(data_path):
+        dataprocess = DataProcess()
 
         # --------------------------------
         # (1) img_lr
@@ -141,7 +181,10 @@ def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
         # (2) img_sr
         # --------------------------------
         start.record()
-        img_sr = forward(img_lr, model, tile)
+        img_lr_pre = dataprocess.pre_process(img_lr)
+        img_sr_pre = forward(img_lr_pre, model, tile)
+        img_sr = dataprocess.post_process(img_sr_pre)
+        del dataprocess
         end.record()
         torch.cuda.synchronize()
         results[f"{mode}_runtime"].append(start.elapsed_time(end))  # milliseconds
@@ -289,7 +332,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("NTIRE2024-EfficientSR")
-    parser.add_argument("--data_dir", default="../DIV2K_LSDIR_valid_LR", type=str)
+    parser.add_argument("--data_dir", default="../datasets", type=str)
     parser.add_argument("--save_dir", default="../results", type=str)
     parser.add_argument("--model_id", default=35, type=int)
     parser.add_argument("--include_test", action="store_true", help="Inference on the DIV2K test set")
