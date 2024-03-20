@@ -1,7 +1,7 @@
 # [NTIRE 2024 Challenge on Efficient Super-Resolution](https://cvlai.net/ntire/2024/) @ [CVPR 2024](https://cvpr.thecvf.com/)
 
 <div align=center>
-<img src="[https://github.com/Amazingren/NTIRE2024_ESR/blob/main/figs/logo.png](https://github.com/notiom/Ehat/blob/main/figs/logo.png?raw=true)" width="400px"/> 
+<img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/logo.png" width="400px"/> 
 </div>
 
 ## EHAT(Enhance Hybrid Attention Transformer for Image Super Resolution)
@@ -9,11 +9,11 @@ Transformer-based approach shows impressive performance in low-level visual task
 
  EHAT Neural Network Architecture Diagram is flllows
  <div align=center>
-<img src="[https://github.com/Amazingren/NTIRE2024_ESR/blob/main/figs/logo.png](https://github.com/notiom/Ehat/blob/main/figs/fig1.png?raw=true)" width="400px"/> 
+<img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/fig1.png" width="400px"/> 
 </div>
  new learning channel-based self-attention mechanism is follows
   <div align=center>
-<img src="[https://github.com/Amazingren/NTIRE2024_ESR/blob/main/figs/logo.png](https://github.com/notiom/Ehat/blob/main/figs/fig2.png?raw=true)" width="400px"/> 
+<img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/fig3.jpg" width="400px"/> 
 </div>
 The final experimental comparison chart is follows
   <div align=center>
