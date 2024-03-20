@@ -25,7 +25,7 @@ def select_model(args, device):
         name, data_range = f"{model_id:02}_RLFN_baseline", 255.0
         #need to download the weights file.
         # model_path = os.path.join('model_zoo', 'SKDADDYS_Ehat.pth')
-        model_path = r"C:\Users\admin\Downloads\net_g_2700.pth"
+        model_path = args.model_path
         model = HAT(upscale=4,
                     in_chans=3,
                     img_size=64,
@@ -334,6 +334,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("NTIRE2024-EfficientSR")
     parser.add_argument("--data_dir", default="../datasets", type=str)
     parser.add_argument("--save_dir", default="../results", type=str)
+    parser.add_argument("--model_path", default="./model_zoo/SKDADDYS_Ehat.pth", type=str)
     parser.add_argument("--model_id", default=35, type=int)
     parser.add_argument("--include_test", action="store_true", help="Inference on the DIV2K test set")
     parser.add_argument("--ssim", action="store_true", help="Calculate SSIM")
