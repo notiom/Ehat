@@ -9,17 +9,20 @@ Transformer-based approach shows impressive performance in low-level visual task
 
  EHAT Neural Network Architecture Diagram is flllows
  <div align=center>
-<img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/fig1.png" height="400px" width="400px"/> 
+<img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/fig1.png" height="400px" width="600px"/> 
 </div>
+
  new learning channel-based self-attention mechanism is follows
   <div align=center>
-<img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/fig3.jpg" height="400px" width="400px"/> 
+<img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/fig3.jpg" height="400px" width="600px"/> 
 </div>
+
 The final experimental comparison chart is follows
   <div align=center>
-<img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/fig3.jpg" height="400px" width="400px"/> 
+<img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/fig3.jpg" height="400px" width="600px"/> 
 </div>
-For more details, please refer to the <a href="https://github.com/Amazingren/NTIRE2024_ESR/blob/main/figs/logo.png">factsheet.pdf</a>.
+
+For more details, please refer to the <a href="https://raw.githubusercontent.com/notiom/Ehat/main/factsheet.pdf">factsheet.pdf</a>.
 
 ## The Environments
 The evaluation environments adopted by us is recorded in the `requirements.txt`. After you built your own basic Python setup via either *virtual environment* or *anaconda*, please try to keep similar to it via:
