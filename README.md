@@ -22,7 +22,7 @@ The final experimental comparison chart is follows
 <img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/fig3.jpg" height="400px" width="600px"/> 
 </div>
 
-For more details, please refer to the <a href="https://raw.githubusercontent.com/notiom/Ehat/main/factsheet.pdf">factsheet.pdf</a>.
+For more details, please refer to the <a href="https://github.com/notiom/Ehat/blob/main/factsheet.pdf">factsheet.pdf</a>.
 
 ## The Environments
 The evaluation environments adopted by us is recorded in the `requirements.txt`. After you built your own basic Python setup via either *virtual environment* or *anaconda*, please try to keep similar to it via:
