@@ -14,7 +14,7 @@ Transformer-based approach shows impressive performance in low-level visual task
 
  new learning channel-based self-attention mechanism is follows
   <div align=center>
-<img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/fig2.jpg" height="400px" width="600px"/> 
+<img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/fig2.png" height="400px" width="600px"/> 
 </div>
 
 The final experimental comparison chart is follows
