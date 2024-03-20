@@ -9,15 +9,15 @@ Transformer-based approach shows impressive performance in low-level visual task
 
  EHAT Neural Network Architecture Diagram is flllows
  <div align=center>
-<img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/fig1.png" width="400px"/> 
+<img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/fig1.png" height="400px" width="400px"/> 
 </div>
  new learning channel-based self-attention mechanism is follows
   <div align=center>
-<img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/fig3.jpg" width="400px"/> 
+<img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/fig3.jpg" height="400px" width="400px"/> 
 </div>
 The final experimental comparison chart is follows
   <div align=center>
-<img src="[https://github.com/Amazingren/NTIRE2024_ESR/blob/main/figs/logo.png](https://github.com/notiom/Ehat/blob/main/figs/fig3.jpg?raw=true)" width="400px"/> 
+<img src="https://raw.githubusercontent.com/notiom/Ehat/main/figs/fig3.jpg" height="400px" width="400px"/> 
 </div>
 For more details, please refer to the <a href="https://github.com/Amazingren/NTIRE2024_ESR/blob/main/figs/logo.png">factsheet.pdf</a>.
 
