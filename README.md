@@ -63,8 +63,7 @@ After downloaded all the necessary validate dataset ([DIV2K_LSDIR_valid_LR](http
 ```
 
 ## pre-trained model
-The best weight files in the model zoo is<div><a href = "https://github.com/notiom/Ehat/releases/download/vv2.0.0/SKDADDYS_Ehat.pth">SKDADDYS_Ehat.pth</a>,Additionally, there are pre-trained weights for the hat network in the model zoo is <div>
-<a href = "https://github.com/notiom/Ehat/releases/download/vv2.0.0/preHAT_L_x4.pth">preHAT_L_x4.pth</a>.
+The best weight files in the model zoo is<div><a href = "https://github.com/notiom/Ehat/releases/download/vv2.0.0/SKDADDYS_Ehat.pth">SKDADDYS_Ehat.pth</a>,Additionally, there are pre-trained weights for the hat network in the model zoo is <div><a href = "https://github.com/notiom/Ehat/releases/download/vv2.0.0/preHAT_L_x4.pth">preHAT_L_x4.pth</a>.
 
 ## How to test the EHat mode
 1. `git clone https://github.com/notiom/Ehat.git`
