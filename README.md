@@ -69,7 +69,7 @@ The best weight files in the model zoo is<div><a href = "https://github.com/noti
 1. `git clone https://github.com/notiom/Ehat.git`
 2.  Select the model you would like to test from [`run.sh`](./run.sh)
     ```bash
-    CUDA_VISIBLE_DEVICES=0 python test_demo.py --data_dir [path to your data dir] --save_dir [path to your save dir] --model_path [path to your model dir] --model_id 35
+    CUDA_VISIBLE_DEVICES=0 python test_demo.py --data_dir [path to your data dir] --save_dir [path to your save dir] --model_path [path to your model dir] --model_id 19
     ```
     - Be sure the change the directories `--data_dir`, `--save_dir` and `--model_path`.
 
