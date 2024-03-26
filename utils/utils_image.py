@@ -8,6 +8,7 @@ from torchvision.utils import make_grid
 from datetime import datetime
 # import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
+from basicsr.metrics.metric_util import to_y_channel
 
 
 IMG_EXTENSIONS = ['.jpg', '.JPG', '.jpeg', '.JPEG', '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP']
@@ -488,7 +489,9 @@ def calculate_psnr(img1, img2, border=0):
     h, w = img1.shape[:2]
     img1 = img1[border:h-border, border:w-border]
     img2 = img2[border:h-border, border:w-border]
-
+    
+    img1 = to_y_channel(img1)
+    img2 = to_y_channel(img2)
     img1 = img1.astype(np.float64)
     img2 = img2.astype(np.float64)
     mse = np.mean((img1 - img2)**2)
