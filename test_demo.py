@@ -1,31 +1,27 @@
 from copy import deepcopy
 import os.path
 import logging
+import numpy as np
 import torch
 import argparse
 import json
 import glob
 
 from pprint import pprint
-from fvcore.nn import FlopCountAnalysis
 from utils.model_summary import get_model_activation, get_model_flops
 from utils import utils_logger
 from utils import utils_image as util
 
-from torch.nn import functional as F
 #The following part is added by myself.
-from basicsr.utils import FileClient,imfrombytes,tensor2img,img2tensor
-from basicsr.utils import imwrite
-
+from torch.nn import functional as F
 
 def select_model(args, device):
     # Model ID is assigned according to the order of the submissions.
     # Different networks are trained with input range of either [0,1] or [0,255]. The range is determined manually.
     model_id = args.model_id
-
     if model_id == 35:
         from models.SKDADDYS_Ehat import HAT
-        name, data_range = f"{model_id:02}_RLFN_baseline", 255.0
+        name, data_range = f"{model_id:02}_RLFN_baseline", 1.0
         #need to download the weights file.
         # model_path = os.path.join('model_zoo', 'SKDADDYS_Ehat.pth')
         model_path = args.model_path
@@ -70,26 +66,31 @@ def select_model(args, device):
 
 
 def select_dataset(data_dir, mode):
-    # inference on the LSDIR_DIV2K_test set
     if mode == "test":
+        path = [
+            (
+                os.path.join(data_dir, f"DIV2K_test_LR/{i:04}.png"),
+                os.path.join(data_dir, f"DIV2K_test_HR/{i:04}.png")
+            ) for i in range(901, 1001)
+        ]
+        # [f"DIV2K_test_LR/{i:04}.png" for i in range(901, 1001)]
+    elif mode == "valid":
+        path = [
+            (
+                os.path.join(data_dir, f"DIV2K_valid_LR/{i:04}x4.png"),
+                os.path.join(data_dir, f"DIV2K_valid_HR/{i:04}.png")
+            ) for i in range(801, 901)
+        ]
+        
+    elif mode == "hybrid_test":
         path = [
             (
                 p.replace("_HR", "_LR").replace(".png", "x4.png"),
                 p
             ) for p in sorted(glob.glob(os.path.join(data_dir, "LSDIR_DIV2K_test_HR/*.png")))
         ]
-
-    # inference on the LSDIR_DIV2K_valid set
-    elif mode == "valid":
-        path = [
-            (
-                p.replace("_HR", "_LR").replace(".png", "x4.png"),
-                p
-            ) for p in sorted(glob.glob(os.path.join(data_dir, "LSDIR_DIV2K_valid_HR/*.png")))
-        ]
     else:
         raise NotImplementedError(f"{mode} is not implemented in select_dataset")
-    
     return path
 
 
@@ -121,6 +122,7 @@ def forward(img_lq, model, tile=None, tile_overlap=32, scale=4):
         output = E.div_(W)
 
     return output
+
 class DataProcess:
     def __init__(self):
         self.window_size = 16
@@ -147,26 +149,6 @@ class DataProcess:
         self.output = self.output[:, :, 0:h - self.mod_pad_h * self.scale, 0:w - self.mod_pad_w * self.scale]
         return self.output
 
-class PairedImageDataset(torch.utils.data.Dataset):
-    def __init__(self):
-        super(PairedImageDataset, self).__init__()
-        self.file_client = FileClient()
-
-def normalsize_change(img_lr,img_hr,file_client,scale = 4):
-
-    # Load gt and lq images. Dimension order: HWC; channel order: BGR;
-    # image range: [0, 1], float32.
-    img_bytes = file_client.get(img_hr, 'gt')
-    img_hr = imfrombytes(img_bytes, float32=True)
-    img_bytes = file_client.get(img_lr, 'lq')
-    img_lr = imfrombytes(img_bytes, float32=True)
-
-    img_hr = img_hr[0:img_lr.shape[0] * scale, 0:img_lr.shape[1] * scale, :]
-    # crop the unmatched GT images during validation or testing, especially for SR benchmark datasets
-
-    # BGR to RGB, HWC to CHW, numpy to tensor
-    img_hr, img_lr = img2tensor([img_hr, img_lr], bgr2rgb=True, float32=True)
-    return img_lr,img_hr
 
 def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
 
@@ -186,21 +168,19 @@ def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
     data_path = select_dataset(args.data_dir, mode)
     save_path = os.path.join(args.save_dir, model_name, mode)
     util.mkdir(save_path)
-    # create test dataset and dataloader
-    
+
     start = torch.cuda.Event(enable_timing=True)
     end = torch.cuda.Event(enable_timing=True)
-    
-    for i, (img_lr, img_hr) in enumerate(data_path):
-        dataprocess = DataProcess()
 
+    for i, (img_lr, img_hr) in enumerate(data_path):
+
+        dataprocess = DataProcess()
         # --------------------------------
         # (1) img_lr
         # --------------------------------
-        file_client = FileClient()
         img_name, ext = os.path.splitext(os.path.basename(img_hr))
-        img_lr,img_hr = normalsize_change(img_lr,img_hr,file_client)
-        img_lr = img_lr.unsqueeze(0)
+        img_lr = util.imread_uint(img_lr, n_channels=3)
+        img_lr = util.uint2tensor4(img_lr, data_range)
         img_lr = img_lr.to(device)
 
         # --------------------------------
@@ -210,20 +190,18 @@ def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
         img_lr_pre = dataprocess.pre_process(img_lr)
         img_sr_pre = forward(img_lr_pre, model, tile)
         img_sr = dataprocess.post_process(img_sr_pre)
-        img_sr = tensor2img(img_sr)
         del dataprocess
         end.record()
         torch.cuda.synchronize()
         results[f"{mode}_runtime"].append(start.elapsed_time(end))  # milliseconds
-        # img_sr = util.tensor2uint(img_sr, data_range)
+        img_sr = util.tensor2uint(img_sr, data_range)
 
         # --------------------------------
         # (3) img_hr
         # --------------------------------
-        # img_hr = util.imread_uint(img_hr, n_channels=3)
-        # img_hr = img_hr.squeeze()
-        # img_hr = util.modcrop(img_hr, sf)
-        img_hr = tensor2img(img_hr)
+        img_hr = util.imread_uint(img_hr, n_channels=3)
+        img_hr = img_hr.squeeze()
+        img_hr = util.modcrop(img_hr, sf)
 
         # --------------------------------
         # PSNR and SSIM
@@ -248,7 +226,7 @@ def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
         #     results[f"{mode}_psnr_y"].append(psnr_y)
         #     results[f"{mode}_ssim_y"].append(ssim_y)
         # print(os.path.join(save_path, img_name+ext))
-        imwrite(img_sr, os.path.join(save_path, img_name+ext))
+        util.imsave(img_sr, os.path.join(save_path, img_name+ext))
 
     results[f"{mode}_memory"] = torch.cuda.max_memory_allocated(torch.cuda.current_device()) / 1024 ** 2
     results[f"{mode}_ave_runtime"] = sum(results[f"{mode}_runtime"]) / len(results[f"{mode}_runtime"]) #/ 1000.0
@@ -257,16 +235,16 @@ def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
         results[f"{mode}_ave_ssim"] = sum(results[f"{mode}_ssim"]) / len(results[f"{mode}_ssim"])
     # results[f"{mode}_ave_psnr_y"] = sum(results[f"{mode}_psnr_y"]) / len(results[f"{mode}_psnr_y"])
     # results[f"{mode}_ave_ssim_y"] = sum(results[f"{mode}_ssim_y"]) / len(results[f"{mode}_ssim_y"])
-    logger.info("{:>16s} : {:<.3f} [M]".format("Max Memory", results[f"{mode}_memory"]))  # Memery
-    logger.info("------> Average runtime of ({}) is : {:.6f} milliseconds".format("test" if mode == "test" else "valid", results[f"{mode}_ave_runtime"]))
-    logger.info("------> Average PSNR of ({}) is : {:.6f} dB".format("test" if mode == "test" else "valid", results[f"{mode}_ave_psnr"]))
+    logger.info("{:>16s} : {:<.3f} [M]".format("Max Memery", results[f"{mode}_memory"]))  # Memery
+    logger.info("------> Average runtime of ({}) is : {:.6f} seconds".format("test" if mode == "test" else "valid", results[f"{mode}_ave_runtime"]))
 
     return results
-                     
+
+
 def main(args):
 
-    utils_logger.logger_info("NTIRE2024-EfficientSR", log_path="NTIRE2024-EfficientSR.log")
-    logger = logging.getLogger("NTIRE2024-EfficientSR")
+    utils_logger.logger_info("NTIRE2023-ImageSR-x4", log_path="NTIRE2023-ImageSR-x4.log")
+    logger = logging.getLogger("NTIRE2023-ImageSR-x4")
 
     # --------------------------------
     # basic settings
@@ -295,15 +273,21 @@ def main(args):
         # restore image
         # --------------------------------
 
-        # inference on both the DIV2K and LSDIR validate sets
-        valid_results = run(model, model_name, data_range, tile, logger, device, args, mode="valid")
-        # record PSNR, runtime
-        results[model_name] = valid_results
+        if args.hybrid_test:
+            # inference on the DIV2K and LSDIR test set
+            valid_results = run(model, model_name, data_range, tile, logger, device, args, mode="hybrid_test")
+            # record PSNR, runtime
+            results[model_name] = valid_results
+        else:
+            # inference on the validation set
+            valid_results = run(model, model_name, data_range, tile, logger, device, args, mode="valid")
+            # record PSNR, runtime
+            results[model_name] = valid_results
 
-        # inference conducted by the organizer
-        if args.include_test:
-            test_results = run(model, model_name, data_range, tile, logger, device, args, mode="test")
-            results[model_name].update(test_results)
+            if args.include_test:
+                # inference on the test set
+                test_results = run(model, model_name, data_range, tile, logger, device, args, mode="test")
+                results[model_name].update(test_results)
 
         input_dim = (3, 256, 256)  # set the input dimension
         activations, num_conv = get_model_activation(model, input_dim)
@@ -311,14 +295,7 @@ def main(args):
         logger.info("{:>16s} : {:<.4f} [M]".format("#Activations", activations))
         logger.info("{:>16s} : {:<d}".format("#Conv2d", num_conv))
 
-        # The FLOPs calculation in previous NTIRE_ESR Challenge
-        # flops = get_model_flops(model, input_dim, False)
-        # flops = flops/10**9
-        # logger.info("{:>16s} : {:<.4f} [G]".format("FLOPs", flops))
-
-        # fvcore is used in NTIRE2024_ESR for FLOPs calculation
-        input_fake = torch.rand(1, 3, 256, 256).to(device)
-        flops = FlopCountAnalysis(model, input_fake).total()
+        flops = get_model_flops(model, input_dim, False)
         flops = flops/10**9
         logger.info("{:>16s} : {:<.4f} [G]".format("FLOPs", flops))
 
@@ -337,10 +314,15 @@ def main(args):
         fmt = "{:20s}\t{:10s}\t{:14s}\t{:10s}\t{:10s}\t{:8s}\t{:8s}\t{:8s}\n"
         s = fmt.format("Model", "Val PSNR", "Val Time [ms]", "Params [M]", "FLOPs [G]", "Acts [M]", "Mem [M]", "Conv")
     for k, v in results.items():
-        val_psnr = f"{v['valid_ave_psnr']:2.2f}"
-        val_time = f"{v['valid_ave_runtime']:3.2f}"
-        mem = f"{v['valid_memory']:2.2f}"
-        
+        # print(v.keys())
+        if args.hybrid_test:
+            val_psnr = f"{v['hybrid_test_ave_psnr']:2.2f}"
+            val_time = f"{v['hybrid_test_ave_runtime']:3.2f}"
+            mem = f"{v['hybrid_test_memory']:2.2f}"
+        else:
+            val_psnr = f"{v['valid_ave_psnr']:2.2f}"
+            val_time = f"{v['valid_ave_runtime']:3.2f}"
+            mem = f"{v['valid_memory']:2.2f}"
         num_param = f"{v['num_parameters']:2.3f}"
         flops = f"{v['flops']:2.2f}"
         acts = f"{v['activations']:2.2f}"
@@ -358,14 +340,15 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser("NTIRE2024-EfficientSR")
+    parser = argparse.ArgumentParser("NTIRE2023-EfficientSR")
     parser.add_argument("--data_dir", default="../datasets", type=str)
     parser.add_argument("--save_dir", default="../results", type=str)
     parser.add_argument("--model_path", default="./model_zoo/SKDADDYS_Ehat.pth", type=str)
     parser.add_argument("--model_id", default=35, type=int)
     parser.add_argument("--include_test", action="store_true", help="Inference on the DIV2K test set")
+    parser.add_argument("--hybrid_test", action="store_true", help="Hybrid test on DIV2K and LSDIR test set")
     parser.add_argument("--ssim", action="store_true", help="Calculate SSIM")
-
     args = parser.parse_args()
     print(args)
     main(args)
+
