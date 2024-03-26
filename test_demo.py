@@ -13,6 +13,9 @@ from utils import utils_logger
 from utils import utils_image as util
 
 from torch.nn import functional as F
+#The following part is added by myself.
+from basicsr.utils import FileClient,imfrombytes,tensor2img,img2tensor
+from basicsr.utils import imwrite
 
 
 def select_model(args, device):
@@ -144,6 +147,27 @@ class DataProcess:
         self.output = self.output[:, :, 0:h - self.mod_pad_h * self.scale, 0:w - self.mod_pad_w * self.scale]
         return self.output
 
+class PairedImageDataset(torch.utils.data.Dataset):
+    def __init__(self):
+        super(PairedImageDataset, self).__init__()
+        self.file_client = FileClient()
+
+def normalsize_change(img_lr,img_hr,file_client,scale = 4):
+
+    # Load gt and lq images. Dimension order: HWC; channel order: BGR;
+    # image range: [0, 1], float32.
+    img_bytes = file_client.get(img_hr, 'gt')
+    img_hr = imfrombytes(img_bytes, float32=True)
+    img_bytes = file_client.get(img_lr, 'lq')
+    img_lr = imfrombytes(img_bytes, float32=True)
+
+    img_hr = img_hr[0:img_lr.shape[0] * scale, 0:img_lr.shape[1] * scale, :]
+    # crop the unmatched GT images during validation or testing, especially for SR benchmark datasets
+
+    # BGR to RGB, HWC to CHW, numpy to tensor
+    img_hr, img_lr = img2tensor([img_hr, img_lr], bgr2rgb=True, float32=True)
+    return img_lr,img_hr
+
 def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
 
     sf = 4
@@ -162,7 +186,8 @@ def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
     data_path = select_dataset(args.data_dir, mode)
     save_path = os.path.join(args.save_dir, model_name, mode)
     util.mkdir(save_path)
-
+    # create test dataset and dataloader
+    
     start = torch.cuda.Event(enable_timing=True)
     end = torch.cuda.Event(enable_timing=True)
     
@@ -172,9 +197,10 @@ def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
         # --------------------------------
         # (1) img_lr
         # --------------------------------
+        file_client = FileClient()
         img_name, ext = os.path.splitext(os.path.basename(img_hr))
-        img_lr = util.imread_uint(img_lr, n_channels=3)
-        img_lr = util.uint2tensor4(img_lr, data_range)
+        img_lr,img_hr = normalsize_change(img_lr,img_hr,file_client)
+        img_lr = img_lr.unsqueeze(0)
         img_lr = img_lr.to(device)
 
         # --------------------------------
@@ -184,18 +210,20 @@ def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
         img_lr_pre = dataprocess.pre_process(img_lr)
         img_sr_pre = forward(img_lr_pre, model, tile)
         img_sr = dataprocess.post_process(img_sr_pre)
+        img_sr = tensor2img(img_sr)
         del dataprocess
         end.record()
         torch.cuda.synchronize()
         results[f"{mode}_runtime"].append(start.elapsed_time(end))  # milliseconds
-        img_sr = util.tensor2uint(img_sr, data_range)
+        # img_sr = util.tensor2uint(img_sr, data_range)
 
         # --------------------------------
         # (3) img_hr
         # --------------------------------
-        img_hr = util.imread_uint(img_hr, n_channels=3)
-        img_hr = img_hr.squeeze()
-        img_hr = util.modcrop(img_hr, sf)
+        # img_hr = util.imread_uint(img_hr, n_channels=3)
+        # img_hr = img_hr.squeeze()
+        # img_hr = util.modcrop(img_hr, sf)
+        img_hr = tensor2img(img_hr)
 
         # --------------------------------
         # PSNR and SSIM
@@ -220,7 +248,7 @@ def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
         #     results[f"{mode}_psnr_y"].append(psnr_y)
         #     results[f"{mode}_ssim_y"].append(ssim_y)
         # print(os.path.join(save_path, img_name+ext))
-        util.imsave(img_sr, os.path.join(save_path, img_name+ext))
+        imwrite(img_sr, os.path.join(save_path, img_name+ext))
 
     results[f"{mode}_memory"] = torch.cuda.max_memory_allocated(torch.cuda.current_device()) / 1024 ** 2
     results[f"{mode}_ave_runtime"] = sum(results[f"{mode}_runtime"]) / len(results[f"{mode}_runtime"]) #/ 1000.0
@@ -234,8 +262,7 @@ def run(model, model_name, data_range, tile, logger, device, args, mode="test"):
     logger.info("------> Average PSNR of ({}) is : {:.6f} dB".format("test" if mode == "test" else "valid", results[f"{mode}_ave_psnr"]))
 
     return results
-
-
+                     
 def main(args):
 
     utils_logger.logger_info("NTIRE2024-EfficientSR", log_path="NTIRE2024-EfficientSR.log")
@@ -340,5 +367,5 @@ if __name__ == "__main__":
     parser.add_argument("--ssim", action="store_true", help="Calculate SSIM")
 
     args = parser.parse_args()
-    pprint(args)
+    print(args)
     main(args)
