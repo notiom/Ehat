@@ -19,7 +19,7 @@ def select_model(args, device):
     # Model ID is assigned according to the order of the submissions.
     # Different networks are trained with input range of either [0,1] or [0,255]. The range is determined manually.
     model_id = args.model_id
-    if model_id == 35:
+    if model_id == 19:
         from models.SKDADDYS_Ehat import HAT
         name, data_range = f"{model_id:02}_RLFN_baseline", 1.0
         #need to download the weights file.
@@ -344,7 +344,7 @@ if __name__ == "__main__":
     parser.add_argument("--data_dir", default="../datasets", type=str)
     parser.add_argument("--save_dir", default="../results", type=str)
     parser.add_argument("--model_path", default="./model_zoo/SKDADDYS_Ehat.pth", type=str)
-    parser.add_argument("--model_id", default=35, type=int)
+    parser.add_argument("--model_id", default=19, type=int)
     parser.add_argument("--include_test", action="store_true", help="Inference on the DIV2K test set")
     parser.add_argument("--hybrid_test", action="store_true", help="Hybrid test on DIV2K and LSDIR test set")
     parser.add_argument("--ssim", action="store_true", help="Calculate SSIM")
