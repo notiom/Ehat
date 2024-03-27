@@ -36,24 +36,24 @@ After downloaded all the necessary validate dataset ([DIV2K_LSDIR_valid_LR](http
 
 ```
 |NTIRE2024_ESR_Challenge/
-|--DIV2K_LSDIR_valid_HR/
-|    |--000001.png
-|    |--000002.png
-|    |--...
-|    |--000100.png
+|--DIV2K_valid_HR/
 |    |--0801.png
 |    |--0802.png
 |    |--...
 |    |--0900.png
-|--DIV2K_LSDIR_valid_LR/
-|    |--000001x4.png
-|    |--000002x4.png
+|    |--0901.png
+|    |--0902.png
 |    |--...
-|    |--000100x4.png
+|    |--1000.png
+|--DIV2K_valid_LR/
 |    |--0801x4.png
 |    |--0802x4.png
 |    |--...
-|    |--0900.png
+|    |--0900x4.png
+|    |--0901x4.png
+|    |--0902x4.png
+|    |--...
+|    |--1000x4.png
 |--Ehat/
 |    |--...
 |    |--test_demo.py
