@@ -74,7 +74,7 @@ The best weight files in the model zoo is<div><a href = "https://github.com/noti
     - Be sure the change the directories `--data_dir`, `--save_dir` and `--model_path`.
 
 ## Organizers
-- XiaoLe Yan (23220231151812@stu.xmu.edu.cn)
+- Xiaole Yan (23220231151812@stu.xmu.edu.cn)
 - Binren Li (Libinren@stu.xmu.edu.cn)
 - Yubin Wei (YubinWei@stu.xmu.edu.cn)
 - Haonan Chen (23220231151779@stu.xmu.edu.cn) 
